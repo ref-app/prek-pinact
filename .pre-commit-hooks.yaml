@@ -1,0 +1,37 @@
+- id: pinact
+  name: pinact
+  description: Validate that GitHub Actions are pinned to commit SHAs
+  entry: pinact run --check
+  language: golang
+  additional_dependencies:
+    - github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@v3.9.0
+  files: '^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$'
+  pass_filenames: false
+
+- id: pinact-fix
+  name: pinact (fix)
+  description: Pin GitHub Actions to commit SHAs in place
+  entry: pinact run --fix
+  language: golang
+  additional_dependencies:
+    - github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@v3.9.0
+  files: '^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$'
+  pass_filenames: false
+
+- id: pinact-update
+  name: pinact (update)
+  description: Pin GitHub Actions to commit SHAs and update to newest releases
+  entry: pinact run --update
+  language: golang
+  additional_dependencies:
+    - github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@v3.9.0
+  files: '^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$'
+  pass_filenames: false
+
+- id: pinact-system
+  name: pinact (system binary)
+  description: Same as `pinact` but invokes a locally installed binary
+  entry: pinact run
+  language: system
+  files: '^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$'
+  pass_filenames: false

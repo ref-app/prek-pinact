@@ -1,0 +1,89 @@
+name: Bump pinact
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # v5
+        with:
+          go-version: stable
+
+      - name: Resolve latest upstream tag
+        id: latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag=$(gh release view --repo suzuki-shunsuke/pinact --json tagName -q .tagName)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Read currently pinned version
+        id: current
+        run: |
+          version=$(grep -oE 'pinact/v3/cmd/pinact@v[0-9.]+' .pre-commit-hooks.yaml | head -n1 | sed 's/.*@//')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Stop if already current
+        if: steps.latest.outputs.tag == steps.current.outputs.version
+        run: echo "Already pinned to ${{ steps.current.outputs.version }}; nothing to do."
+
+      - name: Apply bump locally
+        if: steps.latest.outputs.tag != steps.current.outputs.version
+        env:
+          OLD: ${{ steps.current.outputs.version }}
+          NEW: ${{ steps.latest.outputs.tag }}
+        run: |
+          set -euo pipefail
+          sed -i "s|pinact/v3/cmd/pinact@${OLD}|pinact/v3/cmd/pinact@${NEW}|g" .pre-commit-hooks.yaml
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Bump pinact to ${NEW}"
+
+      - name: Install prek
+        if: steps.latest.outputs.tag != steps.current.outputs.version
+        uses: j178/prek-action@6ad80277337ad479fe43bd70701c3f7f8aa74db3  # v2.0.3
+        with:
+          install-only: true
+
+      - name: Verify new release through prek
+        if: steps.latest.outputs.tag != steps.current.outputs.version
+        run: |
+          set -euo pipefail
+          scratch=$(mktemp -d)
+          rev=$(git rev-parse HEAD)
+          cp -r tests/fixture/. "$scratch/"
+          cd "$scratch"
+          git init -q
+          git -c user.email=ci@local -c user.name=ci add .
+          git -c user.email=ci@local -c user.name=ci commit -qm fixture
+          cat > prek.toml <<EOF
+          [[repos]]
+          repo = "file://${GITHUB_WORKSPACE}"
+          rev = "${rev}"
+          [[repos.hooks]]
+          id = "pinact"
+          EOF
+          prek run pinact --all-files
+
+      - name: Push, tag, release
+        if: steps.latest.outputs.tag != steps.current.outputs.version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW: ${{ steps.latest.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git tag "${NEW}"
+          git push origin HEAD:main
+          git push origin "${NEW}"
+          gh release create "${NEW}" \
+            --title "${NEW}" \
+            --notes "Pins pinact ${NEW}. Upstream: https://github.com/suzuki-shunsuke/pinact/releases/tag/${NEW}"
