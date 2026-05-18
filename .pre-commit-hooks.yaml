@@ -4,7 +4,7 @@
   entry: pinact run --check
   language: golang
   additional_dependencies:
-    - github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@v3.9.2
+    - github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@v3.10.1
   files: '^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$'
   pass_filenames: false
 
@@ -14,7 +14,7 @@
   entry: pinact run --fix
   language: golang
   additional_dependencies:
-    - github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@v3.9.2
+    - github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@v3.10.1
   files: '^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$'
   pass_filenames: false
 
@@ -24,7 +24,7 @@
   entry: pinact run --update
   language: golang
   additional_dependencies:
-    - github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@v3.9.2
+    - github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@v3.10.1
   files: '^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$'
   pass_filenames: false
 
