@@ -29,7 +29,7 @@ jobs:
       - name: Read currently pinned version
         id: current
         run: |
-          version=$(grep -oE 'pinact/v3/cmd/pinact@v[0-9.]+' .pre-commit-hooks.yaml | head -n1 | sed 's/.*@//')
+          version=$(grep -oE 'pinact/v[0-9]+/cmd/pinact@v[0-9.]+' .pre-commit-hooks.yaml | head -n1 | sed 's/.*@//')
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Stop if already current
@@ -39,11 +39,11 @@ jobs:
       - name: Apply bump locally
         if: steps.latest.outputs.tag != steps.current.outputs.version
         env:
-          OLD: ${{ steps.current.outputs.version }}
           NEW: ${{ steps.latest.outputs.tag }}
         run: |
           set -euo pipefail
-          sed -i "s|pinact/v3/cmd/pinact@${OLD}|pinact/v3/cmd/pinact@${NEW}|g" .pre-commit-hooks.yaml
+          major=${NEW#v}; major=${major%%.*}
+          sed -i -E "s|pinact/v[0-9]+/cmd/pinact@v[0-9.]+|pinact/v${major}/cmd/pinact@${NEW}|g" .pre-commit-hooks.yaml
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -am "Bump pinact to ${NEW}"
