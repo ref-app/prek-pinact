@@ -1,0 +1,14 @@
+default_stages: [pre-push]
+repos:
+  - repo: https://github.com/ref-app/prek-pinact
+    rev: 91c31231223aba6583e5c35ad3779b15560ee56b  # frozen: v4.0.0
+    hooks:
+      - id: pinact
+  - repo: local
+    hooks:
+      - id: prek-autoupdate
+        name: prek autoupdate --freeze
+        entry: prek autoupdate --freeze
+        language: system
+        pass_filenames: false
+        always_run: true
