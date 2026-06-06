@@ -44,6 +44,12 @@ jobs:
           set -euo pipefail
           major=${NEW#v}; major=${major%%.*}
           sed -i -E "s|pinact/v[0-9]+/cmd/pinact@v[0-9.]+|pinact/v${major}/cmd/pinact@${NEW}|g" .pre-commit-hooks.yaml
+          go_version=$(go list -m -json "github.com/suzuki-shunsuke/pinact/v${major}@${NEW}" | jq -r .GoVersion)
+          if [ -z "${go_version}" ] || [ "${go_version}" = "null" ]; then
+            echo "Failed to read GoVersion for pinact ${NEW}" >&2
+            exit 1
+          fi
+          sed -i -E "s|^([[:space:]]*language_version: ')[^']+(')|\1${go_version}\2|g" .pre-commit-hooks.yaml
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -am "Bump pinact to ${NEW}"

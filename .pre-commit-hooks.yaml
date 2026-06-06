@@ -3,6 +3,7 @@
   description: Validate that GitHub Actions are pinned to commit SHAs
   entry: pinact run --check
   language: golang
+  language_version: '1.26.3'
   additional_dependencies:
     - github.com/suzuki-shunsuke/pinact/v4/cmd/pinact@v4.0.0
   files: '^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$'
@@ -13,6 +14,7 @@
   description: Pin GitHub Actions to commit SHAs in place
   entry: pinact run --fix
   language: golang
+  language_version: '1.26.3'
   additional_dependencies:
     - github.com/suzuki-shunsuke/pinact/v4/cmd/pinact@v4.0.0
   files: '^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$'
@@ -23,6 +25,7 @@
   description: Pin GitHub Actions to commit SHAs and update to newest releases
   entry: pinact run --update
   language: golang
+  language_version: '1.26.3'
   additional_dependencies:
     - github.com/suzuki-shunsuke/pinact/v4/cmd/pinact@v4.0.0
   files: '^(\.github/workflows/[^/]+|([^/]+/){0,3}action)\.ya?ml$'
