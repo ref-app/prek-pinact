@@ -147,13 +147,11 @@ jobs:
     steps:
       # An app token rather than GITHUB_TOKEN: Dependabot PRs here change
       # .github/workflows/, and GITHUB_TOKEN can never get the workflows
-      # permission needed to merge them. The client ID is inlined because
-      # Dependabot-triggered runs only receive Dependabot secrets, and it is
-      # not secret.
+      # permission needed to merge them.
       - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510  # v3.3.0
         id: app-token
         with:
-          client-id: Iv23linS6AvJx7H6EYoe
+          client-id: ${{ vars.REFAPP_AUTOMATON_CLIENT_ID }}
           private-key: ${{ secrets.REFAPP_AUTOMATON_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write
