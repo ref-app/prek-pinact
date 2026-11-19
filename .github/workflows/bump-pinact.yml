@@ -9,13 +9,18 @@ on:
 permissions:
   contents: read
 
+# Two bump runs at once would both try to push the same tag and release.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
 jobs:
   bump:
+    name: Bump or verify
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      actions: write
-      issues: write
+      contents: write  # push the bump commit and tag, create the release
+      actions: write   # re-enable this workflow to keep the schedule alive
+      issues: write    # open an issue when a scheduled run fails
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         # zizmor: ignore[artipacked] — credentials needed for git push
@@ -141,6 +146,7 @@ jobs:
           fi
 
   merge:
+    name: Merge Dependabot PR
     needs: bump
     if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
@@ -152,6 +158,7 @@ jobs:
         id: app-token
         with:
           client-id: ${{ vars.REFAPP_AUTOMATON_CLIENT_ID }}
+          # zizmor: ignore[secrets-outside-env] — Dependabot runs cannot read environment secrets
           private-key: ${{ secrets.REFAPP_AUTOMATON_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write
