@@ -168,4 +168,12 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge --squash "${PR_URL}"
+        # Dependabot opens its PRs together, so another one can merge while
+        # this one does, and GitHub then refuses with "Base branch was
+        # modified". A real conflict still fails; Dependabot rebases those.
+        run: |
+          for attempt in 1 2 3; do
+            gh pr merge --squash "${PR_URL}" && exit 0
+            sleep $((attempt * 20))
+          done
+          exit 1
