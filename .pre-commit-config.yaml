@@ -1,7 +1,7 @@
 default_stages: [pre-push]
 repos:
   - repo: https://github.com/ref-app/prek-pinact
-    rev: 91c31231223aba6583e5c35ad3779b15560ee56b  # frozen: v4.0.0
+    rev: 34d8549afc9bda24131bd9b49b2526ff0bba8a15  # frozen: v5.0.2
     hooks:
       - id: pinact
   - repo: local

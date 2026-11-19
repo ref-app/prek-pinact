@@ -4,15 +4,26 @@ on:
   schedule:
     - cron: '0 6 * * 1'  # Mondays 06:00 UTC
   workflow_dispatch:
+  pull_request:
 
 permissions:
-  contents: write
+  contents: read
+
+# Two bump runs at once would both try to push the same tag and release.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   bump:
+    name: Bump or verify
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # push the bump commit and tag, create the release
+      actions: write   # re-enable this workflow to keep the schedule alive
+      issues: write    # open an issue when a scheduled run fails
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        # zizmor: ignore[artipacked] — credentials needed for git push
 
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
         with:
@@ -32,12 +43,28 @@ jobs:
           version=$(grep -oE 'pinact/v[0-9]+/cmd/pinact@v[0-9.]+' .pre-commit-hooks.yaml | head -n1 | sed 's/.*@//')
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Stop if already current
-        if: steps.latest.outputs.tag == steps.current.outputs.version
-        run: echo "Already pinned to ${{ steps.current.outputs.version }}; nothing to do."
+      # A pull request only verifies its own head; it never bumps or releases.
+      - name: Decide what to do
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          LATEST: ${{ steps.latest.outputs.tag }}
+          CURRENT: ${{ steps.current.outputs.version }}
+        run: |
+          if [ "${EVENT}" = "pull_request" ]; then
+            echo "bump=false" >> "$GITHUB_OUTPUT"
+            echo "verify=true" >> "$GITHUB_OUTPUT"
+          elif [ "${LATEST}" != "${CURRENT}" ]; then
+            echo "bump=true" >> "$GITHUB_OUTPUT"
+            echo "verify=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Already pinned to ${CURRENT}; nothing to do."
+            echo "bump=false" >> "$GITHUB_OUTPUT"
+            echo "verify=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Apply bump locally
-        if: steps.latest.outputs.tag != steps.current.outputs.version
+        if: steps.plan.outputs.bump == 'true'
         env:
           NEW: ${{ steps.latest.outputs.tag }}
         run: |
@@ -55,13 +82,13 @@ jobs:
           git commit -am "Bump pinact to ${NEW}"
 
       - name: Install prek
-        if: steps.latest.outputs.tag != steps.current.outputs.version
+        if: steps.plan.outputs.verify == 'true'
         uses: j178/prek-action@bdca6f102f98e2b4c7029491a53dfd366469e33d  # v2.0.4
         with:
           install-only: true
 
-      - name: Verify new release through prek
-        if: steps.latest.outputs.tag != steps.current.outputs.version
+      - name: Verify release through prek
+        if: steps.plan.outputs.verify == 'true'
         run: |
           set -euo pipefail
           scratch=$(mktemp -d)
@@ -81,7 +108,7 @@ jobs:
           prek run pinact --all-files
 
       - name: Push, tag, release
-        if: steps.latest.outputs.tag != steps.current.outputs.version
+        if: steps.plan.outputs.bump == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEW: ${{ steps.latest.outputs.tag }}
@@ -93,3 +120,52 @@ jobs:
           gh release create "${NEW}" \
             --title "${NEW}" \
             --notes "Pins pinact ${NEW}. Upstream: https://github.com/suzuki-shunsuke/pinact/releases/tag/${NEW}"
+
+      # GitHub disables scheduled workflows after 60 days without repository
+      # activity, and pinact can go longer than that between releases.
+      # Re-enabling resets that timer without a dummy commit.
+      - name: Keep schedule alive
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/bump-pinact.yml/enable"
+
+      # Without this, failure emails only reach whoever last edited the cron line.
+      - name: Open issue on failure
+        if: failure() && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Bump pinact failed"
+          open=$(gh issue list --repo "${GITHUB_REPOSITORY}" --state open --search "in:title \"${title}\"" --json number --jq '.[0].number // empty')
+          if [ -n "${open}" ]; then
+            gh issue comment --repo "${GITHUB_REPOSITORY}" "${open}" --body "Failed again: ${RUN_URL}"
+          else
+            gh issue create --repo "${GITHUB_REPOSITORY}" --title "${title}" --body "The scheduled bump failed: ${RUN_URL}"
+          fi
+
+  merge:
+    name: Merge Dependabot PR
+    needs: bump
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      # An app token rather than GITHUB_TOKEN: Dependabot PRs here change
+      # .github/workflows/, and GITHUB_TOKEN can never get the workflows
+      # permission needed to merge them.
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510  # v3.3.0
+        id: app-token
+        with:
+          client-id: ${{ vars.REFAPP_AUTOMATON_CLIENT_ID }}
+          # zizmor: ignore[secrets-outside-env] — Dependabot runs cannot read environment secrets
+          private-key: ${{ secrets.REFAPP_AUTOMATON_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+
+      - name: Merge
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --squash "${PR_URL}"
