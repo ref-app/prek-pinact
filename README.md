@@ -36,6 +36,10 @@ Upstream pinact does not yet ship a `.pre-commit-hooks.yaml`. [suzuki-shunsuke/p
 
 Manual trigger: `gh workflow run bump-pinact.yml --repo ref-app/prek-pinact`.
 
+The same workflow runs on every pull request. On a pull request it only runs the fixture check against the PR head and never bumps or releases. Dependabot opens weekly pull requests for the pinned actions. When the check passes, the `refapp-automaton` GitHub App merges them. The app needs the `workflows` permission, and its private key must be stored as both an Actions secret and a Dependabot secret named `REFAPP_AUTOMATON_PRIVATE_KEY`.
+
+If a scheduled run fails, the workflow opens an issue named "Bump pinact failed", or comments on the open one.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
