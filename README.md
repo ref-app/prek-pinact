@@ -24,11 +24,11 @@ Available hook ids:
 | `pinact-update` | `pinact run --update`| golang   | Updates pinned SHAs to newest releases             |
 | `pinact-system` | `pinact run`         | system   | Uses a locally installed `pinact` binary           |
 
-The `golang` hooks require a Go toolchain on the machine running prek; `prek install-hooks` will `go install github.com/suzuki-shunsuke/pinact/v3/cmd/pinact@<pinned-version>` into the hook env on first use.
+The `golang` hooks require a Go toolchain on the machine running prek; `prek install-hooks` will `go install github.com/suzuki-shunsuke/pinact/v<major>/cmd/pinact@<pinned-version>` into the hook env on first use.
 
 ## Why this repo exists
 
-Upstream pinact does not yet ship a `.pre-commit-hooks.yaml`. [suzuki-shunsuke/pinact#971](https://github.com/suzuki-shunsuke/pinact/pull/971) proposes adding one. Once it lands, this wrapper becomes obsolete — consumers can repoint `repo =` at `https://github.com/suzuki-shunsuke/pinact` and delete this repo from their config.
+Upstream pinact does not ship a `.pre-commit-hooks.yaml`. [suzuki-shunsuke/pinact#971](https://github.com/suzuki-shunsuke/pinact/pull/971) proposed one, but it was closed without a merge. If upstream adds hooks later, this wrapper becomes obsolete. Consumers can then point `repo =` at `https://github.com/suzuki-shunsuke/pinact` and remove this repo from their config.
 
 ## Maintenance
 
